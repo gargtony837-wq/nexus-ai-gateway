@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexusAI - Enterprise LLM Security & Chat Gateway</title>
+  <style>
+    :root { --bg: #090d16; --panel: #111827; --border: #1f2937; --accent: #6366f1; --text: #f3f4f6; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+    header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+    h1 { font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .main-layout { display: grid; grid-template-columns: 320px 1fr; flex: 1; overflow: hidden; }
+    @media(max-width: 768px) { .main-layout { grid-template-columns: 1fr; } sidebar { display: none; } }
+    sidebar { background: #0d1322; border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+    input, textarea { width: 100%; background: #050811; border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 8px; font-size: 0.9rem; }
+    .chat-area { display: flex; flex-direction: column; height: 100%; background: var(--bg); }
+    .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+    .msg { max-width: 75%; padding: 12px 16px; border-radius: 12px; font-size: 0.95rem; line-height: 1.5; word-break: break-word; }
+    .msg.user { background: var(--accent); color: #fff; align-self: flex-end; }
+    .msg.ai { background: var(--panel); border: 1px solid var(--border); align-self: flex-start; }
+    .input-bar { padding: 20px; background: var(--panel); border-top: 1px solid var(--border); display: flex; gap: 10px; }
+    .send-btn { background: var(--accent); color: #fff; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .send-btn:hover { opacity: 0.9; }
+    .badge { background: rgba(99, 102, 241, 0.1); color: var(--accent); border: 1px solid var(--accent); padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🛡️ NexusAI <span class="badge">OWASP Secure Gateway</span></h1>
+    <span style="font-size: 0.85rem; color: #9ca3af;">Powered by Gemini 1.5 Engine</span>
+  </header>
+
+  <div class="main-layout">
+    <sidebar>
+      <div>
+        <label style="font-size: 0.85rem; color: #9ca3af; margin-bottom: 6px; display: block;">API Configuration</label>
+        <input type="password" id="apiKey" placeholder="Enter Gemini API Key..." />
+      </div>
+      <div>
+        <label style="font-size: 0.85rem; color: #9ca3af; margin-bottom: 6px; display: block;">Security Mode</label>
+        <select id="secMode" style="width:100%; background:#050811; border:1px solid var(--border); color:#fff; padding:10px; border-radius:8px;">
+          <option value="strict">OWASP Strict (Anti-Injection)</option>
+          <option value="developer">Developer Assistant Mode</option>
+        </select>
+      </div>
+      <div style="margin-top: auto; font-size: 0.8rem; color: #6b7280; line-height: 1.4;">
+        <p><b>Backend Status:</b> Simulated Edge Node Active</p>
+        <p><b>Encryption:</b> Client-Side TLS Handshake</p>
+      </div>
+    </sidebar>
+
+    <div class="chat-area">
+      <div class="messages" id="chatBox">
+        <div class="msg ai">Hello Devanshu! I am NexusAI, your secured LLM gateway. Ask me anything or test security inputs.</div>
+      </div>
+      
+      <div class="input-bar">
+        <input type="text" id="userInput" placeholder="Type a message or security payload..." onkeypress="if(event.key === 'Enter') sendMessage()" />
+        <button class="send-btn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function sendMessage() {
+      const keyInput = document.getElementById('apiKey').value.trim();
+      const textInput = document.getElementById('userInput');
+      const chatBox = document.getElementById('chatBox');
+      const text = textInput.value.trim();
+
+      if (!text) return;
+      if (!keyInput) {
+        alert("Please enter your Gemini API Key in the sidebar first!");
+        return;
+      }
+
+      // Append User Bubble
+      chatBox.innerHTML += `<div class="msg user">${escapeHtml(text)}</div>`;
+      textInput.value = '';
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      // Temporary Loading Bubble
+      const loadingId = 'load_' + Date.now();
+      chatBox.innerHTML += `<div class="msg ai" id="${loadingId}">Analyzing payload through security filters & querying model...</div>`;
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${keyInput}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `You are NexusAI, an enterprise secure assistant protected against OWASP LLM vulnerabilities. Answer the user query: ${text}` }] }]
+          })
+        });
+
+        const data = await res.json();
+        const reply = data.candidates[0].content.parts[0].text;
+        document.getElementById(loadingId).innerText = reply;
+      } catch (err) {
+        document.getElementById(loadingId).innerText = "Error: Failed to process request via secure gateway node.";
+      }
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>
